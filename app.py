@@ -62,6 +62,7 @@ async def create_speech_api(request: SpeechRequest):
         else:
             wav_file = None
 
+        logger.debug(f'Starting generation ...')
         async for chunk in generate_speech_chunks_from_api(
                 prompt=request.input,
                 voice=request.voice,
@@ -74,6 +75,7 @@ async def create_speech_api(request: SpeechRequest):
             if wav_file:
                 wav_file.writeframes(chunk)
 
+        logger.debug(f'Ended generation')
         if wav_file:
             wav_file.close()
 

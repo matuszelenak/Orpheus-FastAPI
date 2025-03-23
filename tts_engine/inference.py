@@ -42,6 +42,7 @@ async def generate_tokens_from_api(
 ) -> AsyncGenerator[str, None]:
     formatted_prompt = format_prompt(prompt, voice)
 
+    token_count = 0
     async for part in await client.completions.create(
             model=os.environ.get('ORPHEUS_MODEL_NAME'),
             prompt=formatted_prompt,
@@ -51,7 +52,10 @@ async def generate_tokens_from_api(
             frequency_penalty=repetition_penalty,
             stream=True
     ):
+        token_count += 1
         yield part.choices[0].text
+
+    logger.debug(f'Received {token_count} tokens')
 
 
 token_id_cache = {}
