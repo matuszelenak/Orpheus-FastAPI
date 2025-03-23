@@ -5,13 +5,13 @@ on:
     branches:
       - main
     paths:
-      - 'tts-engine/**'
+      - 'tts_engine/**'
       - 'app.py'
       - 'requirements.txt'
       - 'Dockerfile'
-      - 'static'
-      - 'templates'
-      - '.github/workflows/docker-assistant-build.yaml'
+      - 'static/**'
+      - 'templates/**'
+      - '.github/workflows/docker-build-and-push.yaml'
 
 jobs:
   build:
