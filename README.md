@@ -1,5 +1,3 @@
-![Orpheus-FASTAPI Banner](https://lex-au.github.io/Orpheus-FastAPI/Banner.png)
-
 # Orpheus-FASTAPI
 
 [![GitHub](https://img.shields.io/github/license/Lex-au/Orpheus-FastAPI)](https://github.com/Lex-au/Orpheus-FastAPI/blob/main/LICENSE.txt)
@@ -25,22 +23,15 @@ Listen to sample outputs with different voices and emotions:
 - [Tara Sad Sample](https://lex-au.github.io/Orpheus-FastAPI/TaraSad.mp3) - Emotional, melancholic demo
 - [Zac Contemplative Sample](https://lex-au.github.io/Orpheus-FastAPI/ZacContemplative.mp3) - Thoughtful, measured tone
 
-## User Interface
-
-![Web User Interface](https://lex-au.github.io/Orpheus-FastAPI/WebUI.png)
 
 ## Features
 
 - **OpenAI API Compatible**: Drop-in replacement for OpenAI's `/v1/audio/speech` endpoint
-- **Modern Web Interface**: Clean, responsive UI with waveform visualization
 - **High Performance**: Optimized for RTX GPUs with parallel processing
 - **Multiple Voices**: 8 different voice options with different characteristics
 - **Emotion Tags**: Support for laughter, sighs, and other emotional expressions
 - **Unlimited Audio Length**: Generate audio of any length through intelligent batching
 - **Smooth Transitions**: Crossfaded audio segments for seamless listening experience
-- **Web UI Configuration**: Configure all server settings directly from the interface
-- **Dynamic Environment Variables**: Update API endpoint, timeouts, and model parameters without editing files
-- **Server Restart**: Apply configuration changes with one-click server restart
 
 ## Project Structure
 
@@ -48,12 +39,7 @@ Listen to sample outputs with different voices and emotions:
 Orpheus-FastAPI/
 ├── app.py                # FastAPI server and endpoints
 ├── requirements.txt      # Dependencies
-├── static/               # Static assets (favicon, etc.)
-├── outputs/              # Generated audio files
-├── templates/            # HTML templates
-│   └── tts.html          # Web UI template
 └── tts_engine/           # Core TTS functionality
-    ├── __init__.py       # Package exports
     ├── inference.py      # Token generation and API handling
     └── speechpipe.py     # Audio conversion pipeline
 ```
@@ -95,11 +81,6 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
 pip3 install -r requirements.txt
 ```
 
-5. Set up the required directories:
-```bash
-# Create directories for outputs and static files
-mkdir -p outputs static
-```
 
 ### Starting the Server
 
@@ -113,10 +94,7 @@ Or with specific host/port:
 uvicorn app:app --host 0.0.0.0 --port 5005 --reload
 ```
 
-![Terminal Output](https://lex-au.github.io/Orpheus-FastAPI/terminal.png)
-
 Access:
-- Web interface: http://localhost:5005/ (or http://127.0.0.1:5005/)
 - API documentation: http://localhost:5005/docs (or http://127.0.0.1:5005/docs)
 
 ![API Documentation](https://lex-au.github.io/Orpheus-FastAPI/docs.png)
@@ -147,20 +125,6 @@ curl http://localhost:5005/v1/audio/speech \
 - `voice` (optional): Which voice to use (default: "tara")
 - `response_format` (optional): Output format (currently only "wav" is supported)
 - `speed` (optional): Speed factor (0.5 to 1.5, default: 1.0)
-
-### Legacy API
-
-Additionally, a simpler `/speak` endpoint is available:
-
-```bash
-curl -X POST http://localhost:5005/speak \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "Hello world! This is a test.",
-    "voice": "tara"
-  }' \
-  -o output.wav
-```
 
 ### Available Voices
 
@@ -249,35 +213,6 @@ The system features efficient batch processing for texts of any length:
 
 **Note about long-form audio**: While the system now supports texts of unlimited length, there may be slight audio discontinuities between segments due to architectural constraints of the underlying model. The Orpheus model was designed for short to medium text segments, and our batching system works around this limitation by intelligently splitting and stitching content with minimal audible impact.
 
-### Integration with OpenWebUI
-
-You can easily integrate this TTS solution with [OpenWebUI](https://github.com/open-webui/open-webui) to add high-quality voice capabilities to your chatbot:
-
-1. Start your Orpheus-FASTAPI server
-2. In OpenWebUI, go to Admin Panel > Settings > Audio
-3. Change TTS from Web API to OpenAI
-4. Set APIBASE URL to your server address (e.g., `http://localhost:5005/v1`)
-5. API Key can be set to "not-needed"
-6. Set TTS Voice to one of the available voices: `tara`, `leah`, `jess`, `leo`, `dan`, `mia`, `zac`, or `zoe`
-7. Set TTS Model to `tts-1`
-
-### External Inference Server
-
-This application requires a separate LLM inference server running the Orpheus model. You can use:
-
-- [GPUStack](https://github.com/gpustack/gpustack) - GPU optimised LLM inference server (My pick) - supports LAN/WAN tensor split parallelisation
-- [LM Studio](https://lmstudio.ai/) - Load the GGUF model and start the local server
-- [llama.cpp server](https://github.com/ggerganov/llama.cpp) - Run with the appropriate model parameters
-- Any compatible OpenAI API-compatible server
-
-Download the quantised model from [lex-au/Orpheus-3b-FT-Q8_0.gguf](https://huggingface.co/lex-au/Orpheus-3b-FT-Q8_0.gguf) and load it in your inference server.
-
-The inference server should be configured to expose an API endpoint that this FastAPI application will connect to.
-
-### Environment Variables
-
-You can configure the system using environment variables or a `.env` file:
-
 - `ORPHEUS_API_URL`: URL of the LLM inference API (tts_engine/inference.py)
 - `ORPHEUS_API_TIMEOUT`: Timeout in seconds for API requests (default: 120)
 - `ORPHEUS_MAX_TOKENS`: Maximum tokens to generate (default: 8192)
@@ -288,8 +223,6 @@ You can configure the system using environment variables or a `.env` file:
 - `ORPHEUS_HOST`: Web server host (default: 0.0.0.0)
 
 The system now supports loading environment variables from a `.env` file in the project root, making it easier to configure without modifying system-wide environment settings. See `.env.example` for a template.
-
-![Server Configuration UI](https://lex-au.github.io/Orpheus-FastAPI/ServerConfig.png)
 
 Note: Repetition penalty is hardcoded to 1.1 and cannot be changed through environment variables as this is the only value that produces stable, high-quality output.
 
@@ -305,7 +238,7 @@ Make sure the `ORPHEUS_API_URL` points to your running inference server.
 
 ### Adding New Voices
 
-To add new voices, update the `AVAILABLE_VOICES` list in `tts_engine/inference.py` and add corresponding descriptions in the HTML template.
+To add new voices, update the `AVAILABLE_VOICES` list in `tts_engine/inference.py`
 
 ## Using with llama.cpp
 

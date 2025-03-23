@@ -1,17 +1,6 @@
-# Web Server Dependencies
 fastapi==0.109.1
 uvicorn==0.23.2
-jinja2==3.1.6
-pydantic==2.4.0
-python-multipart==0.0.19
-
-# API and Communication
+openai==1.68.2
 requests==2.32.0
-python-dotenv==1.0.0
-
-# Audio Processing
 numpy==1.24.0
 snac==1.2.1
-
-# System Utilities
-psutil==5.9.0
