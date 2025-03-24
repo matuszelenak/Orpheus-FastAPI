@@ -1,7 +1,7 @@
 # Orpheus-FASTAPI by Lex-au
 # https://github.com/Lex-au/Orpheus-FastAPI
 # Description: Main FastAPI server for Orpheus Text-to-Speech
-
+import time
 import wave
 from datetime import datetime
 
@@ -62,7 +62,8 @@ async def create_speech_api(request: SpeechRequest):
         else:
             wav_file = None
 
-        logger.debug(f'Starting generation ...')
+        start_time = time.time()
+        samples = 0
         async for chunk in generate_speech_chunks_from_api(
                 prompt=request.input,
                 voice=request.voice,
@@ -70,12 +71,15 @@ async def create_speech_api(request: SpeechRequest):
                 max_batch_chars=1000
         ):
             logger.debug(f'Chunk {len(chunk)}')
+            samples += len(chunk) // 2
             yield chunk
 
             if wav_file:
                 wav_file.writeframes(chunk)
 
-        logger.debug(f'Ended generation')
+        end_time = time.time()
+        duration_s = end_time - start_time
+        logger.debug(f'Generation took {duration_s:.2f}s for {(samples / SAMPLE_RATE):.2f}s of audio')
         if wav_file:
             wav_file.close()
 

@@ -19,7 +19,7 @@ if snac_device == "cuda":
     logger.debug("Using CUDA stream for parallel processing")
 
 
-def convert_to_audio(multiframe, count):
+def convert_to_audio(multiframe):
     """
     Optimized version of convert_to_audio that eliminates inefficient tensor operations
     and reduces CPU-GPU transfers for much faster inference on high-end GPUs.
