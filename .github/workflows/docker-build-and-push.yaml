@@ -6,11 +6,8 @@ on:
       - main
     paths:
       - 'tts_engine/**'
-      - 'app.py'
-      - 'requirements.txt'
+      - 'main.py'
       - 'Dockerfile'
-      - 'static/**'
-      - 'templates/**'
       - '.github/workflows/docker-build-and-push.yaml'
 
 jobs:
