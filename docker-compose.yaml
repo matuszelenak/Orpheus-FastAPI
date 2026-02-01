@@ -1,15 +1,19 @@
 services:
   orpheus-tts:
-    container_name: orpheus-fastapi-dev
+    container_name: orpheus-fastapi
     build:
       context: .
       dockerfile: Dockerfile
     env_file:
       - .env
+    environment:
+      - ORPHEUS_API_URL=http://vllm:8000/v1
+      - ORPHEUS_API_TIMEOUT=120
+      - ORPHEUS_MODEL_NAME=${ORPHEUS_MODEL_NAME:-canopylabs/orpheus-3b-0.1-ft}
     volumes:
-      - /mnt/nvme/llm-models/:/root/.cache/huggingface/hub
+      - /home/whiskas/.cache/huggingface/hub:/root/.cache/huggingface/hub
       - ./outputs:/app/outputs
-    entrypoint: uvicorn app:app --host 0.0.0.0 --port 4242 --reload
+    entrypoint: uv run uvicorn main:app --host 0.0.0.0 --port 4242 --reload
     ports:
       - "4242:4242"
     deploy:
@@ -27,5 +31,39 @@ services:
           path: tts_engine
           target: /app/tts_engine
         - action: sync
-          path: app.py
-          target: /app/app.py
+          path: main.py
+          target: /app/main.py
+    depends_on:
+      vllm:
+        condition: service_started
+
+  vllm:
+    container_name: vllm-orpheus
+    image: vllm/vllm-openai:latest
+    volumes:
+      - /home/whiskas/.cache/huggingface/hub:/root/.cache/huggingface/hub
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
+      - HF_HUB_ENABLE_HF_TRANSFER=false
+      - VLLM_SLEEP_WHEN_IDLE=1
+      - LD_LIBRARY_PATH=/usr/local/nvidia/lib64:/usr/local/nvidia/lib:/usr/lib/x86_64-linux-gnu
+    entrypoint: >
+      vllm serve 
+      ${ORPHEUS_MODEL_NAME:-canopylabs/orpheus-3b-0.1-ft}
+      --enable-prefix-caching 
+      --enable-chunked-prefill 
+      --dtype auto 
+      --max-num-batched-tokens 512 
+      --max-num-seqs 1 
+      --max-model-len 16384 
+      --quantization fp8
+      --gpu-memory-utilization 0.14
+      --tensor-parallel-size 2
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu ]

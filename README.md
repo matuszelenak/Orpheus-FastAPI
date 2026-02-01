@@ -37,7 +37,7 @@ Listen to sample outputs with different voices and emotions:
 
 ```
 Orpheus-FastAPI/
-├── app.py                # FastAPI server and endpoints
+├── main.py                # FastAPI server and endpoints
 ├── requirements.txt      # Dependencies
 └── tts_engine/           # Core TTS functionality
     ├── inference.py      # Token generation and API handling
@@ -86,12 +86,12 @@ pip3 install -r requirements.txt
 
 Run the FastAPI server:
 ```bash
-python app.py
+python main.py
 ```
 
 Or with specific host/port:
 ```bash
-uvicorn app:app --host 0.0.0.0 --port 5005 --reload
+uvicorn main:app --host 0.0.0.0 --port 5005 --reload
 ```
 
 Access:
@@ -232,7 +232,7 @@ Make sure the `ORPHEUS_API_URL` points to your running inference server.
 
 ### Project Components
 
-- **app.py**: FastAPI server that handles HTTP requests and serves the web UI
+- **main.py**: FastAPI server that handles HTTP requests and serves the web UI
 - **tts_engine/inference.py**: Handles token generation and API communication 
 - **tts_engine/speechpipe.py**: Converts token sequences to audio using the SNAC model
 

@@ -1,10 +1,8 @@
-# Orpheus-FASTAPI by Lex-au
-# https://github.com/Lex-au/Orpheus-FastAPI
-# Description: Main FastAPI server for Orpheus Text-to-Speech
 import time
 import wave
 from datetime import datetime
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -13,6 +11,9 @@ from starlette.responses import StreamingResponse
 from tts_engine.constants import SAMPLE_RATE, AVAILABLE_VOICES
 from tts_engine.inference import generate_speech_chunks_from_api, DEFAULT_VOICE
 from tts_engine.log import get_logger
+
+
+load_dotenv()
 
 app = FastAPI(
     title="Orpheus-FASTAPI",

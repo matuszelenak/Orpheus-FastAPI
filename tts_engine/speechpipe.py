@@ -25,6 +25,7 @@ def convert_to_audio(multiframe):
     and reduces CPU-GPU transfers for much faster inference on high-end GPUs.
     """
     if len(multiframe) < 7:
+        logger.debug("Not enough frames to convert to audio")
         return None
 
     num_frames = len(multiframe) // 7
@@ -66,6 +67,9 @@ def convert_to_audio(multiframe):
     if (torch.any(codes[0] < 0) or torch.any(codes[0] > 4096) or
             torch.any(codes[1] < 0) or torch.any(codes[1] > 4096) or
             torch.any(codes[2] < 0) or torch.any(codes[2] > 4096)):
+        logger.debug("Invalid tokens")
+        print(codes)
+        logger.debug(str(multiframe))
         return None
 
     # Use CUDA stream for parallel processing if available

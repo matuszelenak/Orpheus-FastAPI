@@ -1,5 +1,5 @@
 import os
-from typing import Generator, AsyncGenerator, Optional
+from typing import AsyncGenerator, Optional
 
 from openai import AsyncClient
 from sentence_splitter import SentenceSplitter
@@ -39,6 +39,8 @@ async def generate_tokens_from_api(
     client = AsyncClient(base_url=API_URL, api_key='None')
 
     token_count = 0
+    logger.debug(f'Submitting to LLM: {prompt}')
+
     async for part in await client.completions.create(
             model=os.environ.get('ORPHEUS_MODEL_NAME'),
             prompt=formatted_prompt,
@@ -90,78 +92,24 @@ def turn_token_into_id(token_string: str, index: int) -> Optional[int]:
         return None
 
 
-async def tokens_decoder(token_gen: AsyncGenerator[str, None]) -> Generator[bytes, None, None]:
-    """Optimized token decoder with early first-chunk processing for lower latency"""
+async def tokens_decoder_original(token_gen: AsyncGenerator[str, None]) -> AsyncGenerator[bytes, None]:
     buffer = []
     count = 0
 
-    first_chunk_processed = False
-
-    # Use different thresholds for first chunk vs. subsequent chunks
-    min_frames_first = 7  # Just one chunk (7 tokens) for first audio - ultra-low latency
-    min_frames_subsequent = 28  # Standard minimum (4 chunks of 7 tokens) after first audio
-    ideal_frames = 49  # Ideal standard frame size (7×7 window) - unchanged
-    process_every_n = 7  # Process every 7 tokens (standard for Orpheus model) - unchanged
-
     async for token_sim in token_gen:
         token = turn_token_into_id(token_sim, count)
+        if token is None:
+            pass
+        else:
+            if token > 0:
+                buffer.append(token)
+                count += 1
 
-        if token is not None and token > 0:
-            buffer.append(token)
-            count += 1
-
-            # Different processing logic based on whether first chunk has been processed
-            if not first_chunk_processed:
-                if count >= min_frames_first:
-                    buffer_to_proc = buffer[-min_frames_first:]
-
-                    audio_samples = convert_to_audio(buffer_to_proc)
-                    if audio_samples is not None:
-                        first_chunk_processed = True  # Mark first chunk as processed
-                        yield audio_samples
-            else:
-                # For subsequent chunks, use original processing with proper batching
-                if count % process_every_n == 0:
-                    # Use same prioritization logic as before
-                    if len(buffer) >= ideal_frames:
-                        buffer_to_proc = buffer[-ideal_frames:]
-                    elif len(buffer) >= min_frames_subsequent:
-                        buffer_to_proc = buffer[-min_frames_subsequent:]
-                    else:
-                        continue
-
+                if count % 7 == 0 and count > 27:
+                    buffer_to_proc = buffer[-28:]
                     audio_samples = convert_to_audio(buffer_to_proc)
                     if audio_samples is not None:
                         yield audio_samples
-
-    if len(buffer) >= ideal_frames:
-        buffer_to_proc = buffer[-ideal_frames:]
-        audio_samples = convert_to_audio(buffer_to_proc)
-        if audio_samples is not None:
-            yield audio_samples
-
-    elif len(buffer) >= min_frames_subsequent:
-        buffer_to_proc = buffer[-min_frames_subsequent:]
-        audio_samples = convert_to_audio(buffer_to_proc)
-        if audio_samples is not None:
-            yield audio_samples
-
-    # Final special case: even if we don't have minimum frames, try to process
-    # what we have by padding with silence tokens that won't affect the audio
-    elif len(buffer) >= process_every_n:
-        # Pad to minimum frame requirement with copies of the final token
-        # This is more continuous than using unrelated tokens from the beginning
-        last_token = buffer[-1]
-        padding_needed = min_frames_subsequent - len(buffer)
-
-        # Create a padding array of copies of the last token
-        # This maintains continuity much better than circular buffering
-        padding = [last_token] * padding_needed
-        padded_buffer = buffer + padding
-
-        audio_samples = convert_to_audio(padded_buffer)
-        if audio_samples is not None:
-            yield audio_samples
 
 
 async def generate_speech_chunks_from_api(
@@ -177,52 +125,18 @@ async def generate_speech_chunks_from_api(
     """Generate speech from text using Orpheus model with performance optimizations."""
     logger.debug(f"Starting speech generation for '{prompt[:50]}{'...' if len(prompt) > 50 else ''}'")
 
-    # For shorter text, use the standard non-batched approach
-    if not use_batching or len(prompt) < max_batch_chars:
-        async for audio_chunk in tokens_decoder(
-                generate_tokens_from_api(
-                    prompt=prompt,
-                    voice=voice,
-                    temperature=temperature,
-                    top_p=top_p,
-                    max_tokens=max_tokens,
-                    repetition_penalty=REPETITION_PENALTY  # Always use hardcoded value
-                )
-        ):
-            yield audio_chunk
-        return
-
-    # For longer text, use sentence-based batching
     logger.debug(f"Using sentence-based batching for text with {len(prompt)} characters")
 
     splitter = SentenceSplitter(language='en')
     sentences = splitter.split(prompt)
     logger.debug(f"Split text into {len(sentences)} segments")
 
-    batches = []
-    current_batch = ""
+    for i, sentence in enumerate(sentences):
+        logger.debug(f"Processing batch {i + 1}/{len(sentences)} ({len(sentence)} characters)")
 
-    for sentence in sentences:
-        logger.debug(sentence)
-        if len(current_batch) + len(sentence) > max_batch_chars and current_batch:
-            batches.append(current_batch)
-            current_batch = sentence
-        else:
-            if current_batch:
-                current_batch += " "
-            current_batch += sentence
-
-    if current_batch:
-        batches.append(current_batch)
-
-    logger.debug(f"Created {len(batches)} batches for processing")
-
-    for i, batch in enumerate(batches):
-        logger.debug(f"Processing batch {i + 1}/{len(batches)} ({len(batch)} characters)")
-
-        async for audio_chunk in tokens_decoder(
+        async for audio_chunk in tokens_decoder_original(
                 generate_tokens_from_api(
-                    prompt=batch,
+                    prompt=sentence,
                     voice=voice,
                     temperature=temperature,
                     top_p=top_p,
